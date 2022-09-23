@@ -41,8 +41,6 @@ dengue$year<- as.character(dengue$year)
 dengue$weekofyear<- as.factor(dengue$weekofyear)
 
 
-
-
 ### VISUALIZAR DATOS ###
 
 library(ggplot2)
@@ -110,7 +108,8 @@ dengueiq <- subset(dengue, city=="iq")
 
 
 library(lme4)
-m4 <- glmer(total_cases ~ avg_temp * precip_mm * humidity + (1|year), data=denguesj, family = poisson)
+m4 <- glmer(total_cases ~ avg_temp * precip_mm * humidity + (1|year),
+            data=denguesj, family = poisson)
 
 denguesj[,5:7] <- scale(denguesj[, 5:7], center = T, scale = T)
 dengueiq[,5:7] <- scale(dengueiq[, 5:7], center = T, scale = T)
