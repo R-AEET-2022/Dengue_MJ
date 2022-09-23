@@ -2,18 +2,12 @@
 #This is an intermediate-level practice competition. Your task is to predict the number of dengue cases each week (in each location) based on environmental variables describing changes in temperature, precipitation, vegetation, and more.
 ##An understanding of the relationship between climate and dengue dynamics can improve research initiatives and resource allocation to help fight life-threatening pandemics.
 
-library(readr) #leer archivos
-library(readxl) #leer archivos excel
-library(dplyr) #manipular datos
-library(tidyr) #ordenar y trasformar datasets
-library(stringr) #manipular caracteres
-library(forcats) #manipular factores
-library(lubridate) #manipular fechas
-library(here) #refiere la ruta a la carpeta del proyecto
-library(tidylog) #informa sobre operaciones dplyr y tidyr
-library(summarytools) #resume de forma clara y rápida datos numéricos y categóricos
-library(knitr) #reportar datos en varios formatos
-library(magrittr) #poder encadenar funciones con "data %>% function"
+library(readr)
+library(dplyr) 
+library(here) 
+library(tidylog) 
+library(summarytools) 
+library(magrittr) 
 library(summarytools)
 library(effects)
 
@@ -23,18 +17,15 @@ dengue1 <- read_csv(here("data/dengue_features_train.csv"))
 dengue2 <- read_csv(here("data/dengue_labels_train.csv"))
 
 
-glimpse(dengue1)
-glimpse(dengue2)
-
 dengue <- inner_join(dengue1, dengue2)
 
-dfSummary(dengue)
-glimpse(dengue)
-names(dengue)
 
-dengue <- dengue %>% select("city", "year", "weekofyear", "total_cases", "station_avg_temp_c", "station_precip_mm", "reanalysis_relative_humidity_percent")
-
-dengue <- dengue %>% rename(avg_temp = station_avg_temp_c, precip_mm = station_precip_mm, humidity = reanalysis_relative_humidity_percent)
+dengue <- dengue %>% 
+  select("city", "year", "weekofyear", "total_cases",
+         "station_avg_temp_c", "station_precip_mm", "reanalysis_relative_humidity_percent")
+dengue <- dengue %>% 
+  rename(avg_temp = station_avg_temp_c, precip_mm = station_precip_mm,
+         humidity = reanalysis_relative_humidity_percent)
 
 
 dengue <- dengue %>%
@@ -47,12 +38,13 @@ dengue <- dengue %>%
   mutate(cases_estacionalidad=mean(total_cases))
 
 dengue$year<- as.character(dengue$year)
-
 dengue$weekofyear<- as.factor(dengue$weekofyear)
-denguesj <- subset(dengue, city=="sj")
-dengueiq <- subset(dengue, city=="iq")
+
+
+
 
 ### VISUALIZAR DATOS ###
+
 library(ggplot2)
 
 #Climáticos: 
@@ -69,7 +61,7 @@ gghum <- ggplot(dengue, aes(humidity, total_cases, color = city)) +
 ggyear_mean <- ggplot(dengue, aes(x=year,
                                   y=cases,
                                   color=city))+
-  geom_point()+ geom_line()
+  geom_point() + geom_line()
 
 
 ggweek_mean <- ggplot(dengue, aes(x = weekofyear,
@@ -111,18 +103,29 @@ ggarrange(ggyear_mean, ggweek_mean, ggweek_total, ggtemp, ggprec, gghum, ggtemp_
 
 ### MODELOS ###
 
+denguesj <- subset(dengue, city=="sj")
+dengueiq <- subset(dengue, city=="iq")
 
 ##escalar temperatura y precipitacion
-denguesj[,5:7] <- scale(denguesj[, 5:7], center = T, scale = T)
-dengueiq[,5:7] <- scale(dengueiq[, 5:7], center = T, scale = T)
+
 
 library(lme4)
 m4 <- glmer(total_cases ~ avg_temp * precip_mm * humidity + (1|year), data=denguesj, family = poisson)
+
+denguesj[,5:7] <- scale(denguesj[, 5:7], center = T, scale = T)
+dengueiq[,5:7] <- scale(dengueiq[, 5:7], center = T, scale = T)
+
 summary(m4)
+
+
 library(performance)
 check_model(m4)
+
+
+library(effects)
 plot(allEffects(m4))
-simulateResiduals(m4, plot = T)
+
+
 library(visreg)
 visreg(m4)
 
@@ -134,10 +137,10 @@ mod <- gam(cases_estacionalidad ~ s(weekofyear),
 summary(mod)
 check_model(mod)
 library(DHARMa)
-install.packages("mgcViz")
+
 library(mgcViz)
 simulateResiduals(mod, plot = T)
-library(visreg)
+
 visreg(mod)
 
 compare_performance(m4,mod)
