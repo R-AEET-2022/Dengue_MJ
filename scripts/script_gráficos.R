@@ -17,105 +17,47 @@ library(magrittr) #poder encadenar funciones con "data %>% function"
 library(summarytools)
 library(effects)
 
-denge1 <- read_csv(here("data/dengue_features_train.csv"))
-denge2 <- read_csv(here("data/dengue_labels_train.csv"))
+### CARGAR Y MODIFICAR DATOS ####
+
+dengue1 <- read_csv(here("data/dengue_features_train.csv"))
+dengue2 <- read_csv(here("data/dengue_labels_train.csv"))
 
 
-glimpse(denge1)
-glimpse(denge2)
+glimpse(dengue1)
+glimpse(dengue2)
 
-denge <- inner_join(denge1, denge2)
+dengue <- inner_join(dengue1, dengue2)
 
-dfSummary(denge)
-glimpse(denge)
-names(denge)
+dfSummary(dengue)
+glimpse(dengue)
+names(dengue)
 
-denge <- denge %>% select("city", "year", "weekofyear", "total_cases", "station_avg_temp_c", "station_precip_mm", "reanalysis_relative_humidity_percent")
+dengue <- dengue %>% select("city", "year", "weekofyear", "total_cases", "station_avg_temp_c", "station_precip_mm", "reanalysis_relative_humidity_percent")
 
-denge <- denge %>% rename(avg_temp = station_avg_temp_c, precip_mm = station_precip_mm, humidity = reanalysis_relative_humidity_percent)
+dengue <- dengue %>% rename(avg_temp = station_avg_temp_c, precip_mm = station_precip_mm, humidity = reanalysis_relative_humidity_percent)
 
 
-deng <- denge %>%
+dengue <- dengue %>%
   group_by(year, city) %>%
   mutate(cases = mean(total_cases)) %>%
   mutate(dias_muestreo= n())
 
-dengue <- deng %>%
+dengue <- dengue %>%
   group_by(weekofyear,city) %>%
   mutate(cases_estacionalidad=mean(total_cases))
 
 dengue$year<- as.character(dengue$year)
+
 dengue$weekofyear<- as.factor(dengue$weekofyear)
 denguesj <- subset(dengue, city=="sj")
 dengueiq <- subset(dengue, city=="iq")
 
-###pca
-library(vegan)
-den<- dengue[, 5:7]
-pca <- prcomp(den, center = TRUE,
-              scale = TRUE)
-
-
-
-  library(ggbiplot)
-g <- ggbiplot(pca, obs.scale = 1, var.scale = 1,
-              groups = ir_species, ellipse = TRUE,
-              circle = TRUE)
-g <- g + scale_color_discrete(name = '')
-g <- g + theme(legend.direction = 'horizontal',
-               legend.position = 'top')
-print(g)
-
-#Temporales: 
-ggyear_mean <- ggplot(dengue, aes(x=year,
-                        y=cases,
-                        color=city))+
-  geom_point()+ geom_line()
-
-ggweek_mean <- ggplot(dengue, aes(x = weekofyear,
-                        y = cases_estacionalidad,
-                        color= city)) +
-  geom_point() + geom_smooth()
-
-ggweek_total <- ggplot(dengue, aes(x = weekofyear,
-                        y = total_cases,
-                        color= city)) +
-  geom_point()+geom_smooth()
+### VISUALIZAR DATOS ###
+library(ggplot2)
 
 #Climáticos: 
-ggtemp <- ggplot(dengue) +
-  geom_point(aes(avg_temp, total_cases, color = city))+
-  geom_smooth()
-
-##escalar temperatura y precipitacion
-denguesj[,5:6] <- scale(denguesj[, 5:6], center = T, scale = T)
-dengueiq[,5:6] <- scale(dengueiq[, 5:6], center = T, scale = T)
-m0 <- 
-
-m4 <- glmer(total_cases~ avg_temp * precip_mm * humidity + (1|year), data=denguesj, family = poisson)
-summary(m4)
-check_model(m4)
-plot(allEffects(m4))
-simulateResiduals(m4, plot = T)
-library(visreg)
-visreg(m4)
-
-library(mgcv)
-denguesj$weekofyear<- as.numeric(denguesj$weekofyear)
-mod <- gam(total_cases ~ s(weekofyear), 
-           correlation = corCAR1(form = ~ weekofyear), data = denguesj,
-             family=poisson)
-summary(mod)
-check_model(mod)
-library(DHARMa)
-install.packages("mgcViz")
-library(mgcViz)
-simulateResiduals(mod, plot = T)
-visreg(mod)
-
-compare_performance(m4,mod)
-
-
+ggtemp <- ggplot(dengue, aes(avg_temp, total_cases, color = city)) +
+  geom_point()
 
 ggprec <- ggplot(dengue, aes(precip_mm, total_cases, color = city)) +
   geom_point()
@@ -123,21 +65,38 @@ ggprec <- ggplot(dengue, aes(precip_mm, total_cases, color = city)) +
 gghum <- ggplot(dengue, aes(humidity, total_cases, color = city)) +
   geom_point()
 
+#Temporales: 
+ggyear_mean <- ggplot(dengue, aes(x=year,
+                                  y=cases,
+                                  color=city))+
+  geom_point()+ geom_line()
+
+
+ggweek_mean <- ggplot(dengue, aes(x = weekofyear,
+                                  y = cases_estacionalidad,
+                                  color= city)) +
+  geom_point() + geom_smooth()
+
+ggweek_total <- ggplot(dengue, aes(x = weekofyear,
+                                   y = total_cases,
+                                   color= city)) +
+  geom_point()+geom_smooth()
+
 #Mezcla: 
 
 ggtemp_time <- ggplot(dengue, aes(x = weekofyear,
-                        y = avg_temp,
-                        color= city)) +
+                                  y = avg_temp,
+                                  color= city)) +
   geom_point(aes(size= total_cases)) + geom_smooth()
 
 ggprec_time <- ggplot(dengue, aes(x = weekofyear,
-                        y = precip_mm,
-                        color= city)) +
+                                  y = precip_mm,
+                                  color= city)) +
   geom_point(aes(size= total_cases)) + geom_smooth()
 
 gghum_time <- ggplot(dengue, aes(x = weekofyear,
-                        y = humidity,
-                        color= city)) +
+                                 y = humidity,
+                                 color= city)) +
   geom_point(aes(size= total_cases)) + geom_smooth()
 
 
@@ -147,6 +106,42 @@ library(ggpubr)
 ggarrange(ggyear_mean, ggweek_mean, ggweek_total, ggtemp, ggprec, gghum, ggtemp_time, ggprec_time, gghum_time,
           labels = c("A", "B", "C", "D", "E", "F", "G", "H", "I"),
           ncol = 3, nrow = 3)
+
+
+
+### MODELOS ###
+
+
+##escalar temperatura y precipitacion
+denguesj[,5:7] <- scale(denguesj[, 5:7], center = T, scale = T)
+dengueiq[,5:7] <- scale(dengueiq[, 5:7], center = T, scale = T)
+
+library(lme4)
+m4 <- glmer(total_cases ~ avg_temp * precip_mm * humidity + (1|year), data=denguesj, family = poisson)
+summary(m4)
+library(performance)
+check_model(m4)
+plot(allEffects(m4))
+simulateResiduals(m4, plot = T)
+library(visreg)
+visreg(m4)
+
+library(mgcv)
+denguesj$weekofyear<- as.numeric(denguesj$weekofyear)
+mod <- gam(cases_estacionalidad ~ s(weekofyear), 
+           correlation = corCAR1(form = ~ weekofyear), data = denguesj,
+             family=poisson)
+summary(mod)
+check_model(mod)
+library(DHARMa)
+install.packages("mgcViz")
+library(mgcViz)
+simulateResiduals(mod, plot = T)
+library(visreg)
+visreg(mod)
+
+compare_performance(m4,mod)
+
 
 
 
